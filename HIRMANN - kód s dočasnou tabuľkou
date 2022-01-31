@@ -1,0 +1,40 @@
+IF OBJECT_ID(N'tempdb..#temp_table')<>0 DROP TABLE #temp_table
+SELECT
+	uartik.artik, uartik.chrtab1, uartik.chrtab2, uartik.chrtab3,
+	grp_chr.*,
+	grp_chr.chr1 AS nazev1,
+	grp_chr.chr2 AS nazev2,
+	grp_chr.chr3 AS nazev3,
+	MAX(ISNULL(uartik.match,0)) AS match,
+	MAX(ISNULL(achr.stav,0)) AS stav,
+	MAX(ISNULL(achr.stavu,0)) AS stavu,
+	MAX((CASE WHEN upolozky.skladovy>0 AND upolozky.strana='1' THEN upolozky.castka ELSE 0 END)) AS castkamd,
+	MAX((CASE WHEN upolozky.skladovy>0 AND upolozky.strana='0' THEN upolozky.castka ELSE 0 END)) AS castkad
+INTO #temp_table
+FROM uartik
+CROSS APPLY
+(
+	SELECT uean.chr1, uean.chr2, uean.chr3
+	FROM uean 
+	WHERE uean.artik = uartik.artik AND uean.chrtab1 = uartik.chrtab1 AND uean.chrtab2 = uartik.chrtab2 AND uean.chrtab3 = uartik.chrtab3
+	GROUP BY uean.chr1, uean.chr2, uean.chr3
+) grp_chr
+LEFT JOIN uartsklchr achr ON achr.artik = uartik.artik AND achr.chrtab1 = uartik.chrtab1 AND achr.chr1 = grp_chr.chr1
+	AND achr.chrtab2 = uartik.chrtab2 AND achr.chr2 = grp_chr.chr2 AND achr.chrtab3 = uartik.chrtab3 AND achr.chr3 = grp_chr.chr3
+	AND achr.sklad BETWEEN 1 AND 11
+LEFT JOIN upolozky ON upolozky.artik = uartik.artik AND upolozky.chrtab1 = uartik.chrtab1 AND upolozky.chr1 = grp_chr.chr1
+	AND upolozky.chrtab2 = uartik.chrtab2 AND upolozky.chr2 = grp_chr.chr2 AND upolozky.chrtab3 = uartik.chrtab3 AND upolozky.chr3 = grp_chr.chr3
+	AND upolozky.sklad = achr.sklad
+WHERE uartik.artik IN ('1200000358')
+GROUP BY uartik.artik, uartik.chrtab1, uartik.chrtab2, uartik.chrtab3, grp_chr.chr1, grp_chr.chr2, grp_chr.chr3
+ORDER BY uartik.artik, uartik.chrtab1, uartik.chrtab2, uartik.chrtab3, grp_chr.chr1, grp_chr.chr2, grp_chr.chr3
+
+INSERT INTO #temp_table
+SELECT artik, 0, 0, 0, 0, 0, 0, 0, 0, 0,0, stav, stavu, castkamd, castkad  
+FROM uartik 
+WHERE artik = '1200000358'
+
+
+SELECT * FROM #temp_table 
+ORDER BY castkamd DESC
+
